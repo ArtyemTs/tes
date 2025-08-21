@@ -26,3 +26,6 @@ curl -s http://localhost:8080/recommendations   -H 'Content-Type: application/js
 ---
 
 🔎 Full documentation: [docs/README.md](docs/README.md)
+
+![CI](https://github.com/ArtyemTs/tes/actions/workflows/ci.yml/badge.svg)
+![CodeQL](https://github.com/ArtyemTs/tes/actions/workflows/codeql.yml/badge.svg)

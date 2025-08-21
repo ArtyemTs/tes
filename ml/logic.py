@@ -19,8 +19,10 @@ def recommend(req: RecommendationRequest, data: Dict[str, Any]) -> Recommendatio
             imp = ep.get("importance", 3)
             if imp >= threshold:
                 reason_parts = []
-                if ep.get("arcs"): reason_parts.append("arcs: " + ", ".join(ep["arcs"][:3]))
-                if ep.get("summary_short"): reason_parts.append(ep["summary_short"])
+                 if ep.get("arcs"):
+                     reason_parts.append("arcs: " + ", ".join(ep["arcs"][:3]))
+                 if ep.get("summary_short"):
+                     reason_parts.append(ep["summary_short"])
                 reason = " — ".join(reason_parts) if reason_parts else "Key plot episode"
                 items.append(RecommendationItem(season=season["number"], episode=ep["number"], title=ep.get("title"), reason=reason))
     core_arcs = set(show.get("core_arcs", []))
@@ -34,12 +36,14 @@ def recommend(req: RecommendationRequest, data: Dict[str, Any]) -> Recommendatio
         for arc in missing:
             candidate = None
             for season in show["seasons"]:
-                if season["number"] >= req.targetSeason: break
+                if season["number"] >= req.targetSeason:
+                    break
                 for ep in sorted(season["episodes"], key=lambda e: -e.get("importance",3)):
                     if arc in ep.get("arcs", []):
                         candidate = (season["number"], ep)
                         break
-                if candidate: break
+                if candidate:
+                    break
             if candidate:
                 snum, ep = candidate
                 if not any((it.season==snum and it.episode==ep["number"]) for it in items):
