@@ -1,0 +1,21 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: API build & tests
+        uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21" }
+      - run: mvn -q -f api/pom.xml -DskipTests=false test
+      - name: Python lint
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+          ruff ml
+      - name: Docker build
+        run: |
+          docker build -t tes-ml ./ml
+          docker build -t tes-api ./api
+          docker build -t tes-web ./web

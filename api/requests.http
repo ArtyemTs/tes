@@ -1,0 +1,13 @@
+### Health
+GET http://localhost:8080/actuator/health
+
+### Recommendations (EN)
+POST http://localhost:8080/recommendations
+Content-Type: application/json
+
+{
+  "showId": "got",
+  "targetSeason": 4,
+  "immersion": 2,
+  "locale": "en"
+}

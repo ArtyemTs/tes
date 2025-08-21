@@ -1,0 +1,7 @@
+.idea/
+.target/
+node_modules/
+.env
+.env.*
+**/.venv
+.DS_Store

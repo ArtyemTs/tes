@@ -1,0 +1,61 @@
+shows:
+  got:
+    title: "Game of Thrones"
+    core_arcs: ["War of the Five Kings", "White Walkers", "Daenerys Rise", "Stark Family"]
+    seasons:
+      - number: 1
+        episodes:
+          - number: 1
+            title: "Winter Is Coming"
+            importance: 5
+            arcs: ["Stark Family", "White Walkers"]
+            summary_short: "Introduces Starks; first White Walker threat."
+          - number: 7
+            title: "You Win or You Die"
+            importance: 5
+            arcs: ["War of the Five Kings"]
+            summary_short: "Ned confronts Cersei; power struggle ignites."
+          - number: 9
+            title: "Baelor"
+            importance: 5
+            arcs: ["War of the Five Kings", "Stark Family"]
+            summary_short: "Shock execution pivots the realm into war."
+          - number: 10
+            title: "Fire and Blood"
+            importance: 5
+            arcs: ["Daenerys Rise"]
+            summary_short: "Daenerys' turning point with dragons."
+      - number: 2
+        episodes:
+          - number: 1
+            title: "The North Remembers"
+            importance: 4
+            arcs: ["War of the Five Kings", "Stark Family"]
+            summary_short: "Factions mobilize; revenge and survival."
+          - number: 6
+            title: "The Old Gods and the New"
+            importance: 4
+            arcs: ["Stark Family"]
+            summary_short: "Stark children scattered; stakes grow."
+          - number: 9
+            title: "Blackwater"
+            importance: 5
+            arcs: ["War of the Five Kings"]
+            summary_short: "Pivotal battle reshapes power in King’s Landing."
+      - number: 3
+        episodes:
+          - number: 4
+            title: "And Now His Watch Is Ended"
+            importance: 5
+            arcs: ["Daenerys Rise"]
+            summary_short: "Daenerys makes a decisive move in Essos."
+          - number: 5
+            title: "Kissed by Fire"
+            importance: 3
+            arcs: ["Stark Family"]
+            summary_short: "Alliances and oaths complicate loyalties."
+          - number: 9
+            title: "The Rains of Castamere"
+            importance: 5
+            arcs: ["Stark Family", "War of the Five Kings"]
+            summary_short: "Red Wedding: fate of Starks and the war turns."
