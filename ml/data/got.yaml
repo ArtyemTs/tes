@@ -59,3 +59,47 @@ shows:
             importance: 5
             arcs: ["Stark Family", "War of the Five Kings"]
             summary_short: "Red Wedding: fate of Starks and the war turns."
+      - number: 4
+        episodes:
+          - number: 1
+            title: "Two Swords"
+            importance: 4
+            arcs: ["Lannister Power", "Politics in King's Landing"]
+            summary_short: "New political alignments; aftermath of prior war."
+          - number: 2
+            title: "The Lion and the Rose"
+            importance: 5
+            arcs: ["Lannister Power", "Politics in King's Landing"]
+            summary_short: "A royal event triggers a power shift."
+          - number: 8
+            title: "The Mountain and the Viper"
+            importance: 5
+            arcs: ["Lannister Power"]
+            summary_short: "Trial by combat alters fates."
+          - number: 9
+            title: "The Watchers on the Wall"
+            importance: 5
+            arcs: ["Night's Watch", "Beyond the Wall"]
+            summary_short: "Critical battle for the Wall."
+      - number: 5
+        episodes:
+          - number: 1
+            title: "The Wars to Come"
+            importance: 4
+            arcs: ["Politics in King's Landing", "Essos Politics"]
+            summary_short: "New leaders reposition across realms."
+          - number: 6
+            title: "Unbowed, Unbent, Unbroken"
+            importance: 4
+            arcs: ["Politics in King's Landing"]
+            summary_short: "Schemes entangle houses and alliances."
+          - number: 8
+            title: "Hardhome"
+            importance: 5
+            arcs: ["White Walkers", "Beyond the Wall", "Night's Watch"]
+            summary_short: "A northern clash exposes existential threat."
+          - number: 10
+            title: "Mother's Mercy"
+            importance: 5
+            arcs: ["Politics in King's Landing", "Night's Watch"]
+            summary_short: "Consequences cascade; tables turn."

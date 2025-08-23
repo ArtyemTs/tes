@@ -1,57 +1,63 @@
 name: ci
-on: [push, pull_request]
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
-    steps:
-      - uses: actions/checkout@v4
 
-      # ---------- Java (API) ----------
-      - name: Setup Java
+    steps:
+      # -------- Checkout --------
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # -------- Java (API) --------
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
-
-      - name: Cache Maven
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: m2-${{ runner.os }}-${{ hashFiles('api/pom.xml') }}
-          restore-keys: m2-
+          cache: maven
 
       - name: API build & tests
-        run: mvn -q -f api/pom.xml -DskipTests=false test
+        run: mvn -B -q -f api/pom.xml -DskipTests=false test
 
-      # ---------- Python (ML) ----------
-      - name: Setup Python
+      # -------- Python (ML) --------
+      - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            ml/requirements.txt
 
-      - name: Install linters
+      - name: Install Python deps (lint & tests)
         run: |
           python -m pip install --upgrade pip
-          pip install ruff
+          pip install -r ml/requirements.txt
+          pip install ruff pytest
 
       - name: Python lint (ruff)
         run: ruff check ml
 
-      # ---------- Node (Web) ----------
-      - name: Use Node.js
+      - name: Python tests (pytest)
+        run: pytest -q ml
+
+      # -------- Node (Web) --------
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: web/node_modules
-          key: node-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
-          restore-keys: node-
+          cache: "npm"
+          cache-dependency-path: "web/package-lock.json"
 
       - name: Install & build web
         working-directory: web
@@ -59,14 +65,14 @@ jobs:
           npm ci
           npm run build
 
-      # ---------- Docker builds (smoke) ----------
+      # -------- Docker builds (smoke) --------
       - name: Docker build images
         run: |
           docker build -t tes-ml ./ml
           docker build -t tes-api ./api
           docker build -t tes-web ./web
 
-      # ---------- Security scan (optional, non-blocking) ----------
+      # -------- Security scan (optional, non-blocking) --------
       - name: Run Trivy scan (optional)
         uses: aquasecurity/trivy-action@0.24.0
         with:
