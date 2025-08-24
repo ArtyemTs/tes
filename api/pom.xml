@@ -6,7 +6,12 @@
     <version>0.1.0</version>
     <properties>
         <java.version>21</java.version>
-        <spring.boot.version>3.3.2</spring.boot.version>
+        <spring.boot.version>3.3.6</spring.boot.version>
+        <logback.version>1.5.18</logback.version>        <!-- >=1.5.13 fixes CVE-2024-12798/12801 -->
+        <tomcat.version>10.1.44</tomcat.version>         <!-- свежая 10.1.x ветка -->
+        <json-smart.version>2.5.2</json-smart.version>   <!-- fixes CVE-2024-57699 -->
+        <xmlunit.version>2.10.0</xmlunit.version>        <!-- fixes CVE-2024-31573 -->
+        <commons-lang3.version>3.18.0</commons-lang3.version> <!-- fixes CVE-2025-48924 -->
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -56,13 +61,57 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.6.0</version>
         </dependency>
+            <dependency>
+              <groupId>ch.qos.logback</groupId><artifactId>logback-classic</artifactId><version>${logback.version}</version>
+            </dependency>
+            <dependency>
+              <groupId>ch.qos.logback</groupId><artifactId>logback-core</artifactId><version>${logback.version}</version>
+            </dependency>
+            <dependency>
+              <groupId>org.apache.tomcat.embed</groupId><artifactId>tomcat-embed-core</artifactId><version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+              <groupId>org.xmlunit</groupId><artifactId>xmlunit-core</artifactId><version>${xmlunit.version}</version><scope>test</scope>
+            </dependency>
+            <dependency>
+              <groupId>net.minidev</groupId><artifactId>json-smart</artifactId><version>${json-smart.version}</version><scope>test</scope>
+            </dependency>
+            <dependency>
+              <groupId>org.apache.commons</groupId><artifactId>commons-lang3</artifactId><version>${commons-lang3.version}</version>
+            </dependency>
     </dependencies>
     <build>
         <plugins>
             <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>3.3.6</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>enforce-java</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[21,22)</version>
+                                    <message>JDK 21 is required to build and test this project.</message>
+                                </requireJavaVersion>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-toolchains-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>3.1.0</version>
                 <executions>
                     <execution>
                         <goals>
@@ -70,16 +119,22 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <toolchains>
+                        <jdk>
+                            <version>21</version>
+                            <vendor>eclipse</vendor>
+                        </jdk>
+                    </toolchains>
+                </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
                 <configuration>
-                    <release>21</release>
+                    <release>${java.version}</release>
                 </configuration>
             </plugin>
         </plugins>
