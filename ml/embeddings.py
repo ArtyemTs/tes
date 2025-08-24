@@ -1,53 +1,60 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import lru_cache
-from hashlib import blake2b
-from typing import Iterable, List, Protocol
-
+from typing import Iterable, List, Protocol, Sequence
+import hashlib
 import math
 import numpy as np
 
 
-class Embedder(Protocol):
-    """Interface for text embedders."""
-
+class EmbeddingsProvider(Protocol):
+    """Interface for embedding backends."""
     def embed_text(self, text: str) -> np.ndarray: ...
-    def embed_batch(self, texts: Iterable[str]) -> List[np.ndarray]: ...
+    def embed_texts(self, texts: Sequence[str]) -> np.ndarray: ...
 
 
-@dataclass(frozen=True)
-class FakeEmbedder(Embedder):
+def _stable_hash_to_float(seed_text: str) -> float:
+    """Map string -> deterministic float in [-1, 1]."""
+    h = hashlib.sha256(seed_text.encode("utf-8")).hexdigest()
+    # take 16 hex chars -> int -> normalize
+    val = int(h[:16], 16) / float(0xFFFFFFFFFFFFFFFF)
+    return (val * 2.0) - 1.0
+
+
+@dataclass
+class FakeEmbeddings(EmbeddingsProvider):
     """
-    Deterministic, offline fake embedder for MVP/testing.
-    Generates fixed-length vectors from text using a seeded PRNG.
+    Deterministic 'fake' embeddings for MVP.
+    - Dimension fixed, values derived from stable hashes.
+    - No external deps beyond numpy.
     """
-    dim: int = 128
+    dim: int = 64
 
-    def _seed_from_text(self, text: str) -> int:
-        h = blake2b(text.encode("utf-8"), digest_size=8).digest()
-        return int.from_bytes(h, "little")
-
-    @lru_cache(maxsize=4096)
     def embed_text(self, text: str) -> np.ndarray:
-        rng = np.random.default_rng(self._seed_from_text(text))
-        v = rng.normal(loc=0.0, scale=1.0, size=self.dim).astype(np.float32)
-        # L2-normalize for stable cosine
-        norm = np.linalg.norm(v) + 1e-12
-        return (v / norm).astype(np.float32)
+        # Derive dim floats from hash(text + position)
+        vals: List[float] = []
+        for i in range(self.dim):
+            vals.append(_stable_hash_to_float(f"{i}:{text}"))
+        v = np.array(vals, dtype=np.float32)
+        # L2 normalize to behave like real embeddings
+        n = np.linalg.norm(v)
+        return v / (n + 1e-12)
 
-    def embed_batch(self, texts: Iterable[str]) -> List[np.ndarray]:
-        return [self.embed_text(t) for t in texts]
-
-
-def cosine(a: np.ndarray, b: np.ndarray) -> float:
-    """Cosine similarity for L2-normalized vectors."""
-    # tolerate non-normalized inputs
-    an = float(np.linalg.norm(a)) or 1.0
-    bn = float(np.linalg.norm(b)) or 1.0
-    return float(np.dot(a, b) / (an * bn))
+    def embed_texts(self, texts: Sequence[str]) -> np.ndarray:
+        return np.stack([self.embed_text(t) for t in texts], axis=0)
 
 
-def cosdist(a: np.ndarray, b: np.ndarray) -> float:
-    """Cosine distance (1 - cosine). Useful if you need a distance metric."""
-    return 1.0 - cosine(a, b)
+def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+    """Cosine similarity for two vectors."""
+    denom = (np.linalg.norm(a) * np.linalg.norm(b)) + 1e-12
+    return float(np.dot(a, b) / denom)
+
+
+def cosine_matrix(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """
+    Cosine similarities between all rows of a and b.
+    a: [N, D], b: [M, D] -> [N, M]
+    """
+    a_norm = a / (np.linalg.norm(a, axis=1, keepdims=True) + 1e-12)
+    b_norm = b / (np.linalg.norm(b, axis=1, keepdims=True) + 1e-12)
+    return np.matmul(a_norm, b_norm.T)

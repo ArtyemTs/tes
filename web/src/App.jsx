@@ -1,32 +1,72 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createI18n } from './i18n'
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080"
-const i18n = createI18n('en')
 
-export default function App() {
+function ErrorBoundary({ children }) {
+  const [err, setErr] = useState(null)
+  if (err) {
+    return (
+      <div style={{maxWidth: 720, margin: '40px auto', fontFamily:'Inter, system-ui, sans-serif', color:'#b00020'}}>
+        <h2>UI error</h2>
+        <pre style={{whiteSpace:'pre-wrap'}}>{String(err?.stack || err)}</pre>
+      </div>
+    )
+  }
+  return (
+    <React.ErrorBoundary fallbackRender={({error})=>{
+      return (
+        <div style={{maxWidth: 720, margin: '40px auto', fontFamily:'Inter, system-ui, sans-serif', color:'#b00020'}}>
+          <h2>UI error</h2>
+          <pre style={{whiteSpace:'pre-wrap'}}>{String(error?.stack || error)}</pre>
+        </div>
+      )
+    }}>
+      {React.cloneElement(children, { setOuterError: setErr })}
+    </React.ErrorBoundary>
+  )
+}
+
+export default function App({ setOuterError }) {
+  // инициализируем i18n один раз
+  const i18n = useMemo(()=>createI18n('en'), [])
   const [lang, setLang] = useState(i18n.lang)
   const [showId, setShowId] = useState('got')
   const [targetSeason, setTargetSeason] = useState(4)
   const [immersion, setImmersion] = useState(2)
   const [items, setItems] = useState([])
+  const [errorText, setErrorText] = useState('')
 
-  useEffect(()=> i18n.subscribe(setLang), [])
+  useEffect(()=> i18n.subscribe(setLang), [i18n])
 
   async function fetchRecs(e){
     e.preventDefault()
-    const res = await fetch(`${API_BASE}/recommendations`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        showId,
-        targetSeason: Number(targetSeason),
-        immersion: Number(immersion),
-        locale: lang
+    setErrorText('')
+    try {
+      const res = await fetch(`${API_BASE}/recommendations`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          showId,
+          targetSeason: Number(targetSeason),
+          immersion: Number(immersion),
+          locale: lang
+        })
       })
-    })
-    const data = await res.json()
-    setItems(data.items || [])
+      const data = await res.json().catch(()=> ({}))
+      if (!res.ok) {
+        setItems([])
+        setErrorText(
+          `API ${res.status}: ${data?.message || res.statusText} — ${JSON.stringify(data)}`
+        )
+        return
+      }
+      setItems(data.items || [])
+    } catch (err) {
+      console.error(err)
+      setErrorText(String(err))
+      setOuterError?.(err) // поднимем в ErrorBoundary
+    }
   }
 
   const { t } = i18n
@@ -56,6 +96,12 @@ export default function App() {
         </label>
         <button type="submit">{t('getRecs')}</button>
       </form>
+
+      {errorText && (
+        <pre style={{marginTop:16, padding:12, background:'#fff3cd', border:'1px solid #ffeeba', borderRadius:8, whiteSpace:'pre-wrap'}}>
+          {errorText}
+        </pre>
+      )}
 
       <ul style={{marginTop:24}}>
         {items.map((it, idx)=>(

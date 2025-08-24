@@ -15,4 +15,8 @@ springdoc:
     display-request-duration: true
     tags-sorter: alpha
     operations-sorter: alpha
+cors:
+  allowed-origins: "http://localhost:5173"
+  allowed-methods: "GET,POST,OPTIONS"
+  allowed-headers: "*"
 

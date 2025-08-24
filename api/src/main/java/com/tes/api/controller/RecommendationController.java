@@ -6,13 +6,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
-@RestController
-@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+//@RestController
+//@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class RecommendationController {
   private final RecommendationService service;
   @PostMapping("/recommendations")
   public RecommendationResponse recommend(@Valid @RequestBody RecommendationRequest request) {
-    return service.getRecommendations(request);
+    return service.recommend(request);
   }
 }

@@ -1,16 +1,17 @@
 services:
   ml:
     build:
-      context: ..                 # корень репо, чтобы внутрь образа попала папка tes/
-      dockerfile: tes/ml/Dockerfile
+      context: ..                 # корень репо (.../nekoray/tes)
+      dockerfile: ml/Dockerfile   # БЕЗ префикса "tes/"
     container_name: tes-ml
     working_dir: /app
     environment:
       - LOG_LEVEL=info
       - PYTHONPATH=/app
       - DATA_PATH=/app/data/got.yaml
-    command: uvicorn app:app --host 0.0.0.0 --port 8000
-    ports: [ "8000:8000" ]
+    command: uvicorn ml.app:app --host 0.0.0.0 --port 8000
+    ports:
+      - "5006:8000"
     restart: unless-stopped
   api:
     build: ../api

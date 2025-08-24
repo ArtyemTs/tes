@@ -1,81 +1,85 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass
-from math import ceil
-from typing import Dict, Iterable, List, Set
+from typing import Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 
-class SupportsArcs:
-    """Minimal episode interface needed for coverage."""
-    id: str
-    arcs: List[str]
-    season: int
-    number: int
+Episode = Mapping[str, object]
 
 
-@dataclass(frozen=True)
-class CoverageResult:
-    selected_ids: List[str]
-    covered_arcs: Set[str]
-    uncovered_arcs: Set[str]
-
-
-def greedy_arc_coverage(
-    episodes: Iterable[SupportsArcs],
-    required_arcs: Set[str],
-) -> CoverageResult:
+@dataclass
+class CoverageConfig:
     """
-    Greedy set cover: pick episode that covers the most *uncovered* required arcs.
-    Stops when all arcs are covered or no progress can be made.
+    Control how aggressively we cover arcs.
+    immersion in [1..5]: higher -> more episodes.
     """
-    required = set(required_arcs)
-    selected: List[str] = []
-    covered: Set[str] = set()
+    max_per_season_by_immersion: dict[int, int] = None
 
-    # Pre-index arcs -> episodes
-    arc_to_eps: Dict[str, Set[str]] = defaultdict(set)
-    id_to_arcs: Dict[str, Set[str]] = {}
-    for ep in episodes:
-        s = set(ep.arcs or [])
-        id_to_arcs[ep.id] = s
-        for a in s:
-            arc_to_eps[a].add(ep.id)
+    def __post_init__(self):
+        # sensible defaults
+        if self.max_per_season_by_immersion is None:
+            self.max_per_season_by_immersion = {
+                1: 1,  # ultra‑minimal
+                2: 2,
+                3: 3,
+                4: 4,
+                5: 6,  # generous
+            }
 
-    while True:
-        target = required - covered
-        if not target:
-            break
-
-        best_id = None
-        best_gain = 0
-        for ep_id, arcs in id_to_arcs.items():
-            gain = len((arcs & required) - covered)
-            if gain > best_gain and ep_id not in selected:
-                best_id = ep_id
-                best_gain = gain
-
-        if not best_id or best_gain == 0:
-            # cannot progress further
-            break
-
-        selected.append(best_id)
-        covered |= (id_to_arcs[best_id] & required)
-
-    return CoverageResult(
-        selected_ids=selected,
-        covered_arcs=covered,
-        uncovered_arcs=(required - covered),
-    )
+    def max_per_season(self, immersion: int) -> int:
+        return self.max_per_season_by_immersion.get(max(1, min(5, immersion)), 3)
 
 
-def per_season_budget(total_eps: int, immersion_level: int) -> int:
+class CoveragePlanner:
     """
-    Heuristic budget by immersion level (1..5).
-    Low immersion -> small subset, High -> larger.
+    Greedy set‑cover over arcs with a hard cap per season derived from immersion.
+    Inputs are per-season lists of (episode, score).
     """
-    immersion_level = max(1, min(5, immersion_level))
-    # 10% + 10% per immersion step (min 1, max 8)
-    frac = 0.10 + 0.10 * immersion_level
-    k = ceil(total_eps * frac)
-    return max(1, min(8, k))
+    def __init__(self, config: Optional[CoverageConfig] = None):
+        self.config = config or CoverageConfig()
+
+    @staticmethod
+    def _episode_arcs(ep: Episode) -> Set[str]:
+        v = ep.get("arcs", [])
+        if isinstance(v, (list, tuple, set)):
+            return set([str(x) for x in v])
+        return set(str(v).split()) if v else set()
+
+    def select_for_season(
+        self,
+        season_episodes: Sequence[Tuple[Episode, float]],
+        required_arcs: Set[str],
+        immersion: int,
+    ) -> List[Episode]:
+        """
+        Greedy: pick highest-scored episode that covers the most uncovered arcs
+        until we either cover all required_arcs or hit the per-season cap.
+        """
+        cap = self.config.max_per_season(immersion)
+        uncovered = set(required_arcs)
+        selected: List[Episode] = []
+
+        # Sort by score desc once; within loop compute coverage gain
+        candidates = list(season_episodes)
+
+        while candidates and len(selected) < cap and (uncovered or not required_arcs):
+            best_idx = -1
+            best_gain = -1
+            best_score = float("-inf")
+            for idx, (ep, score) in enumerate(candidates):
+                arcs = self._episode_arcs(ep)
+                gain = len(arcs & uncovered) if uncovered else 0
+                # tie-break by score
+                if gain > best_gain or (gain == best_gain and score > best_score):
+                    best_gain = gain
+                    best_score = score
+                    best_idx = idx
+
+            if best_idx == -1:
+                break
+
+            ep, _ = candidates.pop(best_idx)
+            selected.append(ep)
+            uncovered -= self._episode_arcs(ep)
+
+        return selected

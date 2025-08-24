@@ -20,3 +20,10 @@ export DATA_PATH="$PWD/data/got.yaml"
 # Запуск uvicorn
 echo "🚀 Starting ML service on http://localhost:8000 ..."
 uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+
+set -euo pipefail
+
+# Добавляем /app в PYTHONPATH
+export PYTHONPATH=/app
+
+exec uvicorn app:app --host 0.0.0.0 --port 8000

@@ -1,195 +1,84 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, Iterable, List, Tuple
+from collections import defaultdict
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set
 
-import numpy as np
+from .embeddings import FakeEmbeddings, EmbeddingsProvider
+from .scoring import EpisodeScorer, ScoringConfig
+from .coverage import CoveragePlanner
 
-from .embeddings import Embedder, FakeEmbedder
-from .scoring import score_episodes_by_query, EpisodeScore
-from .coverage import greedy_arc_coverage, per_season_budget
-
-
-# --- Domain DTOs used by the ML layer ---
-
-@dataclass(frozen=True)
-class Episode:
-    id: str               # unique key, e.g. "S01E03"
-    season: int
-    number: int
-    title: str
-    synopsis: str
-    arcs: List[str]
+Episode = Mapping[str, object]
 
 
-@dataclass(frozen=True)
-class Recommendation:
-    season: int
-    episode: int
-    reason: str
+def _build_query_text(
+    target_season: int,
+    global_arcs: Sequence[str] | None,
+    show_name: str | None,
+) -> str:
+    """
+    Simple query composer for embeddings.
+    Later we can enrich with character states, antagonist names, etc.
+    """
+    parts: List[str] = []
+    if show_name:
+        parts.append(f"show: {show_name}")
+    parts.append(f"target season: {target_season}")
+    if global_arcs:
+        parts.append("key arcs: " + ", ".join(global_arcs))
+    return "\n".join(parts)
 
-
-# --- Public API ---
 
 def recommend_minimal(
-    episodes_by_season: Dict[int, List[Episode]],
+    episodes: Sequence[Episode],
     target_season: int,
-    immersion_level: int,
-    # Optional: arcs you deem necessary to understand before target_season
-    required_arcs: Iterable[str] | None = None,
-    *,
-    embedder: Embedder | None = None,
-    query_text: str | None = None,
-) -> List[Recommendation]:
+    immersion: int = 3,
+    required_arcs_by_season: Optional[Dict[int, Set[str]]] = None,
+    show_name: Optional[str] = None,
+    embedder: Optional[EmbeddingsProvider] = None,
+) -> Dict[int, List[Episode]]:
     """
-    Produce minimal episode set per prior season to preserve context.
-
-    Strategy:
-      1) Coverage-first: greedily cover required arcs per season (if provided).
-      2) Fill up to budget by highest cosine score to the query (if provided),
-         otherwise by simple heuristic (earlier + more arcs).
+    Core entry point:
+    - Scores episodes by semantic proximity to a simple query.
+    - Applies per-season coverage (set‑cover over arcs) within an immersion budget.
+    Returns: {season: [episodes...]} for all seasons < target_season.
     """
-    embedder = embedder or FakeEmbedder()
-    required_arcs_set = set(required_arcs or [])
+    embedder = embedder or FakeEmbeddings()
+    scorer = EpisodeScorer(embedder=embedder, config=ScoringConfig())
+    planner = CoveragePlanner()
 
-    # Simple default query if none provided: "Context needed for season N"
-    if not query_text:
-        query_text = f"Key context to understand season {target_season}"
+    # Filter prior seasons only
+    prior_eps: List[Episode] = [ep for ep in episodes if int(ep.get("season", 0)) < target_season]
 
-    # Precompute embeddings cache by episode id (used by scoring)
-    synopsis_embedding_cache: Dict[str, np.ndarray] = {}
+    if not prior_eps:
+        return {}
 
-    results: List[Recommendation] = []
+    # Build a single query for now (can be made per-season in the future)
+    global_arcs: List[str] = []
+    if required_arcs_by_season:
+        # union of arcs can make the query slightly more informative
+        uni: Set[str] = set()
+        for s, arcs in required_arcs_by_season.items():
+            uni |= set(arcs)
+        global_arcs = sorted(list(uni))
 
-    # Work only with seasons prior to target
-    for season in sorted(s for s in episodes_by_season.keys() if s < target_season):
-        season_eps = sorted(episodes_by_season[season], key=lambda e: e.number)
-        if not season_eps:
-            continue
+    query_text = _build_query_text(target_season, global_arcs, show_name)
 
-        budget = per_season_budget(total_eps=len(season_eps), immersion_level=immersion_level)
+    # Score all episodes
+    scored = scorer.score(prior_eps, query_text)  # List[(ep, score)]
 
-        # 1) Coverage step (only if arcs are provided)
-        selected_ids: List[str] = []
-        reasons: Dict[str, str] = {}
+    # Group by season
+    by_season: Dict[int, List[tuple]] = defaultdict(list)
+    for ep, score in scored:
+        s = int(ep.get("season", 0))
+        by_season[s].append((ep, score))
 
-        if required_arcs_set:
-            cov = greedy_arc_coverage(season_eps, required_arcs_set)
-            for eid in cov.selected_ids:
-                selected_ids.append(eid)
-                covered_here = set(next(e for e in season_eps if e.id == eid).arcs or []) & required_arcs_set
-                if covered_here:
-                    reasons[eid] = f"covers arcs: {', '.join(sorted(covered_here))}"
-            # If nothing covered, we'll fall back to scoring-only
+    # For each season, apply coverage
+    result: Dict[int, List[Episode]] = {}
+    for season, items in by_season.items():
+        items.sort(key=lambda t: t[1], reverse=True)
+        needed = set(required_arcs_by_season.get(season, set())) if required_arcs_by_season else set()
+        chosen = planner.select_for_season(items, needed, immersion)
+        result[season] = chosen
 
-        # 2) Scoring fill-up
-        if len(selected_ids) < budget:
-            scored: List[EpisodeScore] = score_episodes_by_query(
-                season_eps,
-                query_text=query_text,
-                embedder=embedder,
-                synopsis_embedding_cache=synopsis_embedding_cache,
-            )
-            for es in scored:
-                if es.episode_id in selected_ids:
-                    continue
-                selected_ids.append(es.episode_id)
-                if es.episode_id not in reasons:
-                    # explainability: cosine bucket
-                    reasons[es.episode_id] = f"high thematic relevance (cos={es.score:.2f})"
-                if len(selected_ids) >= budget:
-                    break
-
-        # 3) Materialize per-season recommendations with reasons
-        ep_by_id = {e.id: e for e in season_eps}
-        for eid in selected_ids:
-            e = ep_by_id[eid]
-            reason = reasons.get(eid, "selected for context")
-            results.append(Recommendation(season=e.season, episode=e.number, reason=reason))
-
-    # Stable, deterministic order: by season, then episode number
-    results.sort(key=lambda r: (r.season, r.episode))
-    return results
-
-# ---- FastAPI adapters (dataset loader + endpoint facade) ----
-from pathlib import Path
-import yaml  # pip install pyyaml
-
-def load_dataset(path: str) -> dict[int, list[Episode]]:
-    """
-    Loads a small lawful YAML dataset into {season -> [Episode,...]}.
-    Supported shapes:
-      A) {"seasons": {"1": [{number,title,synopsis,arcs}], "2": [...]}}
-      B) {"episodes": [{season,number,title,synopsis,arcs}]}
-    """
-    raw_text = Path(path).read_text(encoding="utf-8")
-    data = yaml.safe_load(raw_text) or {}
-
-    episodes_by_season: dict[int, list[Episode]] = {}
-
-    if "seasons" in data:
-        for s, eps in (data["seasons"] or {}).items():
-            season_int = int(s)
-            episodes_by_season.setdefault(season_int, [])
-            for e in eps or []:
-                num = int(e["number"])
-                eid = e.get("id") or f"S{season_int:02d}E{num:02d}"
-                episodes_by_season[season_int].append(
-                    Episode(
-                        id=eid,
-                        season=season_int,
-                        number=num,
-                        title=e.get("title", ""),
-                        synopsis=e.get("synopsis", "") or "",
-                        arcs=list(e.get("arcs", []) or []),
-                    )
-                )
-        return episodes_by_season
-
-    if "episodes" in data:
-        for e in data["episodes"] or []:
-            season_int = int(e["season"])
-            num = int(e["number"])
-            eid = e.get("id") or f"S{season_int:02d}E{num:02d}"
-            episodes_by_season.setdefault(season_int, []).append(
-                Episode(
-                    id=eid,
-                    season=season_int,
-                    number=num,
-                    title=e.get("title", ""),
-                    synopsis=e.get("synopsis", "") or "",
-                    arcs=list(e.get("arcs", []) or []),
-                )
-            )
-        # Keep episodes per season sorted by episode number
-        for s in list(episodes_by_season.keys()):
-            episodes_by_season[s] = sorted(episodes_by_season[s], key=lambda x: x.number)
-        return episodes_by_season
-
-    raise ValueError("Unsupported dataset YAML shape. Expected keys: 'seasons' or 'episodes'.")
-
-
-def recommend(req, dataset: dict[int, list[Episode]]):
-    """
-    Thin facade to keep FastAPI handler minimal.
-    Expects req to have: target_season (int), immersion_level (int), optional required_arcs (list[str]).
-    Returns dict shape that should match RecommendationResponse.
-    """
-    # tolerant attribute access
-    target_season = getattr(req, "target_season", None) or getattr(req, "season", None)
-    immersion_level = getattr(req, "immersion_level", None) or getattr(req, "immersion", 2)
-    required_arcs = getattr(req, "required_arcs", []) or []
-
-    recs = recommend_minimal(
-        episodes_by_season=dataset,
-        target_season=int(target_season),
-        immersion_level=int(immersion_level),
-        required_arcs=set(required_arcs),
-    )
-
-    return {
-        "items": [
-            {"season": r.season, "episode": r.episode, "reason": r.reason}
-            for r in recs
-        ]
-    }
+    # Keep only seasons < target and sort by season
+    return dict(sorted(result.items(), key=lambda kv: kv[0]))
