@@ -1,3 +1,1 @@
-"""
-TES ML package marker (MVP).
-"""
+from .logic import load_dataset, recommend  # опционально
