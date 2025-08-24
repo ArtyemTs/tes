@@ -11,8 +11,3 @@ Content-Type: application/json
   "immersion": 2,
   "locale": "en"
 }
-### Swagger UI
-GET http://localhost:8080/swagger-ui.html
-
-### OpenAPI JSON
-GET http://localhost:8080/v3/api-docs
