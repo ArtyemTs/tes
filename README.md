@@ -1,106 +1,152 @@
-## Through Every Season (TES)
 
-## 📖 Overview
-**Through Every Season (TES)** is a service that recommends the **minimal sufficient set of TV show episodes** so viewers can start from any season while preserving context.  
 
-The user selects:
-- **Target season** (where they want to start watching)
-- **Immersion level** (1–5, fewer → only critical episodes, higher → more context)
+# Through Every Season (TES)
 
-✅ Current MVP is fully working end-to-end with the *Game of Thrones* sample dataset (S1–S3).
+Minimal episode recommendations per season so you can jump into any season of a TV show with just enough context.
+
+- **Input:** show, target season, immersion level (1–5).
+- **Output:** minimal per-season episode list + short reasons ("introduces X", "resolves Y").
+- **Stack:** Java 21 (API), Python (ML), Web UI with RU/EN i18n. Everything runs in Docker.
+
+> Discussions in Russian; code, identifiers, and technical docs in English.
 
 ---
 
-## 🚀 Quick Start
+## Project layout
 
-```bash
-git clone <your-repo-url> tes && cd tes
+infra/
+api/
+ml/
+web/
+docs/
+adr/
+project_structure.txt
+
+See `project_structure.txt` for the up-to-date tree.
+
+---
+
+## Prerequisites
+
+- Docker + Docker Compose
+- Make (optional)
+- macOS/arm64 friendly (tested on Apple Silicon)
+
+---
+
+## Quick start (Dev)
+
+Local development uses the **`dev`** profile by default.
+
+
+## From repo root
 docker compose -f infra/docker-compose.yml up --build
-```
 
-Open in browser:
-- **Web UI:** http://localhost:5173  
-- **API (Spring Boot):** http://localhost:8080/actuator/health  
-- **ML (FastAPI):** http://localhost:8000/docs  
-- **API Docs (Swagger/OpenAPI):** http://localhost:8080/swagger-ui.html  
+	•	API: http://localhost:8080
+	•	(If enabled) Actuator: http://localhost:8081
+	•	ML:  http://localhost:8000
+	•	Web: http://localhost:5173 (if applicable)
 
----
+CORS in dev allows http://localhost:5173 and http://localhost:3000 by default.
 
-## 📡 Example Usage
+⸻
 
-```bash
-curl -s http://localhost:8080/recommendations   -H 'Content-Type: application/json'   -d '{"showId":"got","targetSeason":4,"immersion":2,"locale":"en"}' | jq
-```
+Production-like run
 
-Response example:
-```json
-{
-  "showId": "got",
-  "targetSeason": 4,
-  "immersion": 2,
-  "items": [
-    { "season":1, "episode":1, "title":"Winter Is Coming", "reason":"Introduces Starks; first White Walker threat." },
-    { "season":1, "episode":7, "title":"You Win or You Die", "reason":"Ned confronts Cersei; power struggle ignites." }
-  ]
-}
-```
+Use the prod profile without changing code. Provide a strict CORS origin.
 
----
+SPRING_PROFILES_ACTIVE=prod \
+ALLOWED_ORIGINS=https://tes.example.com \
+docker compose -f infra/docker-compose.yml --profile prod up --build
 
-## 🧩 Architecture & Services
+Ports
+	•	API_PORT (default 8080)
+	•	ML_PORT  (default 8000)
 
-- **ML Service (FastAPI, Python 3.11)**  
-  Endpoint: `POST /recommend`  
-  Generates recommendations from dataset (`ml/data/got.yaml`).
+⸻
 
-- **API Service (Spring Boot, Java 21)**  
-  Endpoint: `POST /recommendations`  
-  Proxies requests to ML service, adds validation, exposes health checks, and documents endpoints via OpenAPI.
+Configuration
 
-- **Web UI (Vite + React)**  
-  Minimal client for user input (show, season, immersion) and result rendering.
+All configuration is environment-driven. Key variables:
 
----
+Service	Variable	Default	Description
+API	SPRING_PROFILES_ACTIVE	dev	Spring profile: dev or prod
+API	API_PORT	8080	API HTTP port
+API	ALLOWED_ORIGINS	http://localhost:5173,http://localhost:3000	CORS allowlist (comma-separated)
+API	ML_BASE_URL	http://ml:8000	ML base URL
+ML	ML_PORT	8000	ML HTTP port
+ML	ALLOWED_ORIGINS	* (dev)	CORS allowlist (set a single origin in prod)
+ML	ML_VERSION	0.1.0	Exposed ML version string
 
-## 📂 Repository Structure
+Create .env (optional) to centralize local values:
 
-```
-tes/
-  api/       # Spring Boot API
-  ml/        # FastAPI ML service
-  web/       # React frontend (Vite)
-  infra/     # docker-compose, infra configs
-  docs/      # Documentation
-  .github/   # CI workflow
-```
+# .env (example)
+SPRING_PROFILES_ACTIVE=dev
+API_PORT=8080
+ML_PORT=8000
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+ML_BASE_URL=http://ml:8000
+ML_VERSION=0.1.0
 
----
+Docker Compose picks up .env automatically.
 
-## 🧠 Recommendation Logic (MVP)
+⸻
 
-- **Immersion level (1–5):**  
-  Lower = only critical episodes; Higher = more context.
-- **Core arcs coverage:** ensures at least one episode per key arc.  
-- **Explainability:** each recommendation includes a short reason (arc + summary).  
+Services
 
----
+API (Java 21 / Spring Boot)
+	•	Profiles: dev (default), prod
+	•	Config split across application-dev.yml, application-prod.yml
+	•	Env overrides: API_PORT, ALLOWED_ORIGINS, ML_BASE_URL
 
-## 🔐 Security & Legal
+ML (Python)
+	•	Env-driven: ML_PORT, ALLOWED_ORIGINS, ML_VERSION
+	•	CORS allowlist respects ALLOWED_ORIGINS
 
-- Dataset contains **short, original summaries** for demo purposes (fair use).  
-- No copyrighted transcripts or full scripts are stored.  
-- No secrets in repo — config is via environment variables.  
-- For production: add rate limiting, CORS whitelist, audit logging, dependency scanning (OWASP, Renovate).  
+⸻
 
----
+Run book
 
-## 🛠️ Next Steps
+Start (dev)
 
-1. Add **i18n (EN/RU)** in the Web UI.  
-2. Expand dataset (more seasons and shows).  
-3. API: extend OpenAPI docs (springdoc) and maintain controller contract tests.  
-4. ML: add embeddings + cosine similarity scoring for arcs.  
-5. End-to-end tests with Playwright/Cypress.  
+docker compose -f infra/docker-compose.yml up --build
+
+Start (prod-like)
+
+SPRING_PROFILES_ACTIVE=prod ALLOWED_ORIGINS=https://tes.example.com \
+docker compose -f infra/docker-compose.yml --profile prod up --build
+
+Rebuild only API
+
+docker compose -f infra/docker-compose.yml build api && docker compose -f infra/docker-compose.yml up api
+
+Rebuild only ML
+
+docker compose -f infra/docker-compose.yml build ml && docker compose -f infra/docker-compose.yml up ml
+
+
+⸻
+
+Development conventions
+	•	Conventional Commits
+	•	Short PRs, clear DoD
+	•	Docs live in docs/ and ADRs in docs/adr/
+
+⸻
+
+Security & legal
+	•	No unlicensed data.
+	•	Secrets/config only via env variables or secret stores.
+	•	Restrictive CORS in production (ALLOWED_ORIGINS must be set to a single trusted origin).
+
+⸻
+
+Next steps
+
+Phase 0 (today):
+	1.	Profiles & config ✅ (this PR)
+	2.	Health/Readiness endpoints
+	3.	JSON logs + request correlation
 
 ![CI](https://github.com/ArtyemTs/tes/actions/workflows/ci.yml/badge.svg)
 ![CodeQL](https://github.com/ArtyemTs/tes/actions/workflows/codeql.yml/badge.svg)

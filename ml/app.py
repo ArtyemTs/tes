@@ -1,5 +1,7 @@
-# ml/app.py
-from fastapi import FastAPI
+import time
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+import structlog
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Set, Any
 from .models import RecommendationRequest, RecommendationResponse
@@ -8,6 +10,54 @@ import os
 import yaml
 
 from ml.logic import recommend_minimal
+
+APP_NAME = "tes-ml"
+VERSION = os.getenv("ML_VERSION", "0.1.0")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+PORT = int(os.getenv("ML_PORT", "8000"))
+
+structlog.configure(
+    processors=[
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.add_log_level,
+        structlog.processors.JSONRenderer(),
+    ]
+)
+log = structlog.get_logger(app=APP_NAME)
+
+app = FastAPI(title="TES ML")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+READY = False
+
+@app.on_event("startup")
+async def startup_event():
+    global READY
+    t0 = time.time()
+    # TODO: load dataset/embeddings here
+    READY = True
+    log.info("startup_complete", ready=READY, took_ms=int((time.time()-t0)*1000), version=VERSION)
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = request.headers.get("X-Request-Id") or os.urandom(8).hex()
+    # прокидываем дальше
+    response: Response = await call_next(request)
+    response.headers["X-Request-Id"] = request_id
+    structlog.contextvars.bind_contextvars(requestId=request_id)
+    log.info("request_served", path=request.url.path, method=request.method, status=response.status_code)
+    structlog.contextvars.clear_contextvars()
+    return response
+
+@app.get("/health")
+async def health():
+    return {"version": VERSION, "ready": READY, "app": APP_NAME}
 
 DATA_PATH = os.environ.get("DATA_PATH", "/app/ml/data/got.yaml")
 
