@@ -6,7 +6,7 @@ const resources = {
   en: { translation: {
     app_title: 'Through Every Season',
     show: 'Show',
-    target_season: 'Target season',
+    targetSeason: 'Target season',
     immersion: 'Immersion',
     get_recommendations: 'Get recommendations',
     loading: 'Loading...',
@@ -16,7 +16,7 @@ const resources = {
   ru: { translation: {
     app_title: 'Through Every Season',
     show: 'Сериал',
-    target_season: 'Целевой сезон',
+    targetSeason: 'Целевой сезон',
     immersion: 'Погружение',
     get_recommendations: 'Получить рекомендации',
     loading: 'Загрузка...',

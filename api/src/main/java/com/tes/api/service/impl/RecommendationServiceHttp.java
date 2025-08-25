@@ -22,7 +22,7 @@ public class RecommendationServiceHttp implements RecommendationService {
     private final String mlUrl;
 
     public RecommendationServiceHttp(ObjectMapper om,
-                                     @Value("${ml.base-url:http://ml:8000}") String mlBaseUrl) {
+                                     @Value("${ml.base-url:http://localhost:8000}") String mlBaseUrl) {
         this.om = om;
         this.http = RestClient.create();
         this.mlUrl = mlBaseUrl + "/recommendations";
@@ -32,8 +32,8 @@ public class RecommendationServiceHttp implements RecommendationService {
     public RecommendationResponse recommend(RecommendationRequest req) {
         // Формируем payload для ML (ожидаем формат ml/logic.recommend_minimal)
         Map<String, Object> payload = new HashMap<>();
-        payload.put("show_name", req.showId());
-        payload.put("target_season", req.targetSeason());
+        payload.put("showId", req.showId());
+        payload.put("targetSeason", req.targetSeason());
         payload.put("immersion", req.immersion());
         payload.put("required_arcs_by_season", req.requiredArcsBySeason());
         payload.put("episodes", req.episodes()); // может быть null

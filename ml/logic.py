@@ -1,78 +1,70 @@
+# ml/logic.py
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set
+from typing import Dict, List, Optional, Sequence, Set, Tuple, Any
 
 from .embeddings import FakeEmbeddings, EmbeddingsProvider
 from .scoring import EpisodeScorer, ScoringConfig
 from .coverage import CoveragePlanner
 
-Episode = Mapping[str, object]
-
+Episode = Dict[str, Any]  # унифицированный тип эпизода (dict)
 
 def _build_query_text(
-    target_season: int,
+    targetSeason: int,
     global_arcs: Sequence[str] | None,
-    show_name: str | None,
+    showId: str | None,
 ) -> str:
-    """
-    Simple query composer for embeddings.
-    Later we can enrich with character states, antagonist names, etc.
-    """
     parts: List[str] = []
-    if show_name:
-        parts.append(f"show: {show_name}")
-    parts.append(f"target season: {target_season}")
+    if showId:
+        parts.append(f"show: {showId}")
+    parts.append(f"target season: {targetSeason}")
     if global_arcs:
         parts.append("key arcs: " + ", ".join(global_arcs))
     return "\n".join(parts)
 
 
 def recommend_minimal(
-    episodes: Sequence[Episode],
-    target_season: int,
+    episodes: List[Episode],
+    targetSeason: int,
     immersion: int = 3,
     required_arcs_by_season: Optional[Dict[int, Set[str]]] = None,
-    show_name: Optional[str] = None,
+    showId: Optional[str] = None,
     embedder: Optional[EmbeddingsProvider] = None,
 ) -> Dict[int, List[Episode]]:
     """
     Core entry point:
-    - Scores episodes by semantic proximity to a simple query.
-    - Applies per-season coverage (set‑cover over arcs) within an immersion budget.
-    Returns: {season: [episodes...]} for all seasons < target_season.
+    Возвращает {season: [Episode,...]} только для сезонов < targetSeason.
     """
     embedder = embedder or FakeEmbeddings()
     scorer = EpisodeScorer(embedder=embedder, config=ScoringConfig())
     planner = CoveragePlanner()
 
-    # Filter prior seasons only
-    prior_eps: List[Episode] = [ep for ep in episodes if int(ep.get("season", 0)) < target_season]
-
+    # фильтруем только прошлые сезоны
+    prior_eps: List[Episode] = [ep for ep in (episodes or []) if int(ep.get("season", 0)) < int(targetSeason)]
     if not prior_eps:
         return {}
 
-    # Build a single query for now (can be made per-season in the future)
+    # объединяем требуемые арки по всем сезонам (для запроса к эмбеддингам)
     global_arcs: List[str] = []
     if required_arcs_by_season:
-        # union of arcs can make the query slightly more informative
         uni: Set[str] = set()
-        for s, arcs in required_arcs_by_season.items():
-            uni |= set(arcs)
+        for arcs in required_arcs_by_season.values():
+            uni |= set(arcs or [])
         global_arcs = sorted(list(uni))
 
-    query_text = _build_query_text(target_season, global_arcs, show_name)
+    query_text = _build_query_text(targetSeason, global_arcs, showId)
 
-    # Score all episodes
-    scored = scorer.score(prior_eps, query_text)  # List[(ep, score)]
+    # скорим все эпизоды
+    scored: List[Tuple[Episode, float]] = scorer.score(prior_eps, query_text)
 
-    # Group by season
-    by_season: Dict[int, List[tuple]] = defaultdict(list)
+    # группируем по сезону
+    by_season: Dict[int, List[Tuple[Episode, float]]] = defaultdict(list)
     for ep, score in scored:
         s = int(ep.get("season", 0))
         by_season[s].append((ep, score))
 
-    # For each season, apply coverage
+    # выбираем минимально достаточный набор по каждому сезону
     result: Dict[int, List[Episode]] = {}
     for season, items in by_season.items():
         items.sort(key=lambda t: t[1], reverse=True)
@@ -80,5 +72,5 @@ def recommend_minimal(
         chosen = planner.select_for_season(items, needed, immersion)
         result[season] = chosen
 
-    # Keep only seasons < target and sort by season
+    # сортируем по номеру сезона
     return dict(sorted(result.items(), key=lambda kv: kv[0]))

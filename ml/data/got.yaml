@@ -1,105 +1,104 @@
-shows:
-  got:
-    title: "Game of Thrones"
-    core_arcs: ["War of the Five Kings", "White Walkers", "Daenerys Rise", "Stark Family"]
-    seasons:
-      - number: 1
-        episodes:
-          - number: 1
-            title: "Winter Is Coming"
-            importance: 5
-            arcs: ["Stark Family", "White Walkers"]
-            summary_short: "Introduces Starks; first White Walker threat."
-          - number: 7
-            title: "You Win or You Die"
-            importance: 5
-            arcs: ["War of the Five Kings"]
-            summary_short: "Ned confronts Cersei; power struggle ignites."
-          - number: 9
-            title: "Baelor"
-            importance: 5
-            arcs: ["War of the Five Kings", "Stark Family"]
-            summary_short: "Shock execution pivots the realm into war."
-          - number: 10
-            title: "Fire and Blood"
-            importance: 5
-            arcs: ["Daenerys Rise"]
-            summary_short: "Daenerys' turning point with dragons."
-      - number: 2
-        episodes:
-          - number: 1
-            title: "The North Remembers"
-            importance: 4
-            arcs: ["War of the Five Kings", "Stark Family"]
-            summary_short: "Factions mobilize; revenge and survival."
-          - number: 6
-            title: "The Old Gods and the New"
-            importance: 4
-            arcs: ["Stark Family"]
-            summary_short: "Stark children scattered; stakes grow."
-          - number: 9
-            title: "Blackwater"
-            importance: 5
-            arcs: ["War of the Five Kings"]
-            summary_short: "Pivotal battle reshapes power in King’s Landing."
-      - number: 3
-        episodes:
-          - number: 4
-            title: "And Now His Watch Is Ended"
-            importance: 5
-            arcs: ["Daenerys Rise"]
-            summary_short: "Daenerys makes a decisive move in Essos."
-          - number: 5
-            title: "Kissed by Fire"
-            importance: 3
-            arcs: ["Stark Family"]
-            summary_short: "Alliances and oaths complicate loyalties."
-          - number: 9
-            title: "The Rains of Castamere"
-            importance: 5
-            arcs: ["Stark Family", "War of the Five Kings"]
-            summary_short: "Red Wedding: fate of Starks and the war turns."
-      - number: 4
-        episodes:
-          - number: 1
-            title: "Two Swords"
-            importance: 4
-            arcs: ["Lannister Power", "Politics in King's Landing"]
-            summary_short: "New political alignments; aftermath of prior war."
-          - number: 2
-            title: "The Lion and the Rose"
-            importance: 5
-            arcs: ["Lannister Power", "Politics in King's Landing"]
-            summary_short: "A royal event triggers a power shift."
-          - number: 8
-            title: "The Mountain and the Viper"
-            importance: 5
-            arcs: ["Lannister Power"]
-            summary_short: "Trial by combat alters fates."
-          - number: 9
-            title: "The Watchers on the Wall"
-            importance: 5
-            arcs: ["Night's Watch", "Beyond the Wall"]
-            summary_short: "Critical battle for the Wall."
-      - number: 5
-        episodes:
-          - number: 1
-            title: "The Wars to Come"
-            importance: 4
-            arcs: ["Politics in King's Landing", "Essos Politics"]
-            summary_short: "New leaders reposition across realms."
-          - number: 6
-            title: "Unbowed, Unbent, Unbroken"
-            importance: 4
-            arcs: ["Politics in King's Landing"]
-            summary_short: "Schemes entangle houses and alliances."
-          - number: 8
-            title: "Hardhome"
-            importance: 5
-            arcs: ["White Walkers", "Beyond the Wall", "Night's Watch"]
-            summary_short: "A northern clash exposes existential threat."
-          - number: 10
-            title: "Mother's Mercy"
-            importance: 5
-            arcs: ["Politics in King's Landing", "Night's Watch"]
-            summary_short: "Consequences cascade; tables turn."
+show: "got"
+title: "Game of Thrones"
+core_arcs:
+  - "War of the Five Kings"
+  - "White Walkers"
+  - "Daenerys Rise"
+  - "Stark Family"
+
+seasons:
+  1:
+    - episode: 1
+      title: "Winter Is Coming"
+      importance: 5
+      arcs: ["Stark Family", "White Walkers"]
+      synopsis: "Introduces Starks; first White Walker threat."
+    - episode: 7
+      title: "You Win or You Die"
+      importance: 5
+      arcs: ["War of the Five Kings"]
+      synopsis: "Ned confronts Cersei; power struggle ignites."
+    - episode: 9
+      title: "Baelor"
+      importance: 5
+      arcs: ["War of the Five Kings", "Stark Family"]
+      synopsis: "Shock execution pivots the realm into war."
+    - episode: 10
+      title: "Fire and Blood"
+      importance: 5
+      arcs: ["Daenerys Rise"]
+      synopsis: "Daenerys' turning point with dragons."
+  2:
+    - episode: 1
+      title: "The North Remembers"
+      importance: 4
+      arcs: ["War of the Five Kings", "Stark Family"]
+      synopsis: "Factions mobilize; revenge and survival."
+    - episode: 6
+      title: "The Old Gods and the New"
+      importance: 4
+      arcs: ["Stark Family"]
+      synopsis: "Stark children scattered; stakes grow."
+    - episode: 9
+      title: "Blackwater"
+      importance: 5
+      arcs: ["War of the Five Kings"]
+      synopsis: "Pivotal battle reshapes power in King’s Landing."
+  3:
+    - episode: 4
+      title: "And Now His Watch Is Ended"
+      importance: 5
+      arcs: ["Daenerys Rise"]
+      synopsis: "Daenerys makes a decisive move in Essos."
+    - episode: 5
+      title: "Kissed by Fire"
+      importance: 3
+      arcs: ["Stark Family"]
+      synopsis: "Alliances and oaths complicate loyalties."
+    - episode: 9
+      title: "The Rains of Castamere"
+      importance: 5
+      arcs: ["Stark Family", "War of the Five Kings"]
+      synopsis: "Red Wedding: fate of Starks and the war turns."
+  4:
+    - episode: 1
+      title: "Two Swords"
+      importance: 4
+      arcs: ["Lannister Power", "Politics in King's Landing"]
+      synopsis: "New political alignments; aftermath of prior war."
+    - episode: 2
+      title: "The Lion and the Rose"
+      importance: 5
+      arcs: ["Lannister Power", "Politics in King's Landing"]
+      synopsis: "A royal event triggers a power shift."
+    - episode: 8
+      title: "The Mountain and the Viper"
+      importance: 5
+      arcs: ["Lannister Power"]
+      synopsis: "Trial by combat alters fates."
+    - episode: 9
+      title: "The Watchers on the Wall"
+      importance: 5
+      arcs: ["Night's Watch", "Beyond the Wall"]
+      synopsis: "Critical battle for the Wall."
+  5:
+    - episode: 1
+      title: "The Wars to Come"
+      importance: 4
+      arcs: ["Politics in King's Landing", "Essos Politics"]
+      synopsis: "New leaders reposition across realms."
+    - episode: 6
+      title: "Unbowed, Unbent, Unbroken"
+      importance: 4
+      arcs: ["Politics in King's Landing"]
+      synopsis: "Schemes entangle houses and alliances."
+    - episode: 8
+      title: "Hardhome"
+      importance: 5
+      arcs: ["White Walkers", "Beyond the Wall", "Night's Watch"]
+      synopsis: "A northern clash exposes existential threat."
+    - episode: 10
+      title: "Mother's Mercy"
+      importance: 5
+      arcs: ["Politics in King's Landing", "Night's Watch"]
+      synopsis: "Consequences cascade; tables turn."

@@ -44,7 +44,7 @@ DATA = {
     }
 }
 
-def test_target_season_6_only_S1_to_S5_and_ww_covered():
+def test_targetSeason_6_only_S1_to_S5_and_ww_covered():
     req = RecommendationRequest(showId="got", targetSeason=6, immersion=2, locale="en")
     res = recommend(req, DATA)
     # 1) Все сезоны < 6

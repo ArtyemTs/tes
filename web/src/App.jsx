@@ -61,12 +61,41 @@ export default function App({ setOuterError }) {
         )
         return
       }
-      setItems(data.items || [])
+      setItems(normalizeResponse(data))
     } catch (err) {
       console.error(err)
       setErrorText(String(err))
       setOuterError?.(err) // поднимем в ErrorBoundary
     }
+  }
+
+  function normalizeResponse(data){
+    // 1) уже плоский формат
+    if (Array.isArray(data?.items)) return data.items.map(it=>({
+      season: Number(it.season),
+      episode: Number(it.episode),
+      title: it.title || '',
+      reason: it.reason || 'selected'
+    }))
+    // 2) формат { recommendations: { "1":[...], "2":[...] } }
+    if (data && data.recommendations && typeof data.recommendations === 'object'){
+      const flat = []
+      for (const [seasonStr, eps] of Object.entries(data.recommendations)){
+        const season = Number(seasonStr)
+        ;(eps || []).forEach(ep=>{
+          flat.push({
+            season,
+            episode: Number(ep.episode ?? ep.number ?? 0),
+            title: ep.title || '',
+            reason: ep.reason || 'selected'
+          })
+        })
+      }
+      // опционально красиво отсортируем
+      flat.sort((a,b)=> a.season - b.season || a.episode - b.episode)
+      return flat
+    }
+    return []
   }
 
   const { t } = i18n
@@ -105,7 +134,7 @@ export default function App({ setOuterError }) {
 
       <ul style={{marginTop:24}}>
         {items.map((it, idx)=>(
-          <li key={idx}>
+          <li key={`${it.season}-${it.episode}-${idx}`}>
             <strong>{t('seasonEp', it.season, it.episode)}</strong>
             {it.title ? ` — ${it.title} — `: ' — '}<i>{it.reason}</i>
           </li>

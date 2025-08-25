@@ -1,7 +1,7 @@
 server:
   port: ${SERVER_PORT:8080}
 ml:
-  baseUrl: ${ML_BASE_URL:http://localhost:8000}
+  base-url: ${ML_BASE_URL:http://localhost:8000}
 management:
   endpoints:
     web:
@@ -15,4 +15,8 @@ springdoc:
     display-request-duration: true
     tags-sorter: alpha
     operations-sorter: alpha
+cors:
+  allowed-origins: "http://localhost:5173"
+  allowed-methods: "GET,POST,OPTIONS"
+  allowed-headers: "*"
 
