@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+tes:
+  ml:
+    base-url: http://ml:8000        # compose dev
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,prometheus"
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  server:
+    port: 8081                      # отдельный порт актуаторов (удобно в dev)
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+  pattern:
+    correlation: "%X{requestId:-}"
+
+cors:
+  allowed-origins: "http://localhost:5173,http://localhost:3000"
+  allowed-methods: "GET,POST,OPTIONS"
+  allowed-headers: "*"

@@ -1,12 +1,11 @@
-server:
-  port: ${SERVER_PORT:8080}
-ml:
-  base-url: ${ML_BASE_URL:http://localhost:8000}
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "health,info,metrics"
+
+#ml:
+#  base-url: ${ML_BASE_URL:http://localhost:8000}
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: "health,info,metrics"
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -15,8 +14,14 @@ springdoc:
     display-request-duration: true
     tags-sorter: alpha
     operations-sorter: alpha
-cors:
-  allowed-origins: "http://localhost:5173"
-  allowed-methods: "GET,POST,OPTIONS"
-  allowed-headers: "*"
+#cors:
+#  allowed-origins: "http://localhost:5173"
+#  allowed-methods: "GET,POST,OPTIONS"
+#  allowed-headers: "*"
+
+spring:
+  application:
+    name: tes-api
+  profiles:
+    active: dev
 
