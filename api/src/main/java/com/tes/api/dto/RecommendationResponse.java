@@ -1,10 +1,13 @@
 package com.tes.api.dto;
+
 import java.util.List;
-import lombok.Data;
-@Data
-public class RecommendationResponse {
-  private String showId;
-  private int targetSeason;
-  private int immersion;
-  private List<RecommendationItem> items;
+import java.util.Map;
+
+public record RecommendationResponse(
+        Map<Integer, List<MinimalEpisode>> recommendations
+) {
+    public record MinimalEpisode(
+            String id, int season, int episode, String title, List<String> arcs
+    ) {
+    }
 }

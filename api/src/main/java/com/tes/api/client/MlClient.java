@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MlClient {
   private final ObjectMapper mapper = new ObjectMapper();
-  @Value("${ml.baseUrl}") private String baseUrl;
+  @Value("${ml.base-url}") private String baseUrl;
   public RecommendationResponse recommend(RecommendationRequest request) {
     try (CloseableHttpClient client = HttpClients.createDefault()) {
       HttpPost post = new HttpPost(baseUrl + "/recommend");

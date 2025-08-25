@@ -1,43 +1,43 @@
 package com.tes.api.web;
-        
-        import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
+
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
-import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.*;
 
-        import java.util.HashMap;
-import java.util.List;
+import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.UUID;
 
-        @ControllerAdvice
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
-          @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
-            List<Map<String, Object>> violations = ex.getBindingResult().getFieldErrors().stream()
-                        .map(this::toViolation)
-                        .toList();
-        
-                    Map<String, Object> body = new HashMap<>();
-            body.put("status", HttpStatus.BAD_REQUEST.value());
-            body.put("error", "Bad Request");
-            body.put("message", "Validation failed");
-            body.put("violations", violations);
-        
-                    return ResponseEntity
-                        .status(HttpStatus.BAD_REQUEST)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(body);
-          }
+    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
+    public ResponseEntity<?> handleValidation(Exception ex, HttpServletRequest req) {
+        String id = UUID.randomUUID().toString();
+        return ResponseEntity.badRequest().body(Map.of(
+                "timestamp", OffsetDateTime.now().toString(),
+                "status", 400,
+                "error", "Bad Request",
+                "errorId", id,
+                "message", ex.getMessage(),
+                "path", req.getRequestURI()
+        ));
+    }
 
-          private Map<String, Object> toViolation(FieldError fe) {
-            Map<String, Object> v = new HashMap<>();
-            v.put("field", fe.getField());
-            v.put("rejectedValue", fe.getRejectedValue());
-            v.put("message", fe.getDefaultMessage());
-            return v;
-          }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<?> handleAny(Exception ex, HttpServletRequest req) {
+        String id = UUID.randomUUID().toString();
+        ex.printStackTrace(); // keep in logs
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "timestamp", OffsetDateTime.now().toString(),
+                "status", 500,
+                "error", "Internal Server Error",
+                "errorId", id,
+                "message", ex.getMessage(),
+                "path", req.getRequestURI()
+        ));
+    }
 }

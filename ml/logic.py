@@ -1,83 +1,76 @@
-import yaml
-from typing import Dict, Any, List
-from models import RecommendationRequest, RecommendationItem, RecommendationResponse  # относительный импорт
+# ml/logic.py
+from __future__ import annotations
 
-def load_dataset(path: str) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+from collections import defaultdict
+from typing import Dict, List, Optional, Sequence, Set, Tuple, Any
 
-def recommend(req: RecommendationRequest, data: Dict[str, Any]) -> RecommendationResponse:
-    show = data["shows"].get(req.showId)
-    if not show:
-        return RecommendationResponse(
-            showId=req.showId,
-            targetSeason=req.targetSeason,
-            immersion=req.immersion,
-            items=[]
-        )
+from .embeddings import FakeEmbeddings, EmbeddingsProvider
+from .scoring import EpisodeScorer, ScoringConfig
+from .coverage import CoveragePlanner
 
-    # 1→≥5, 2→≥4, 3→≥3, 4→≥2, 5→≥1
-    threshold = {1: 5, 2: 4, 3: 3, 4: 2, 5: 1}[req.immersion]
+Episode = Dict[str, Any]  # унифицированный тип эпизода (dict)
 
-    items: List[RecommendationItem] = []
-    for season in show["seasons"]:
-        if season["number"] >= req.targetSeason:
-            break  # учитываем только предыдущие сезоны
-        for ep in season["episodes"]:
-            imp = ep.get("importance", 3)
-            if imp >= threshold:
-                reason_parts = []
-                if ep.get("arcs"):
-                    reason_parts.append("arcs: " + ", ".join(ep["arcs"][:3]))
-                if ep.get("summary_short"):
-                    reason_parts.append(ep["summary_short"])
-                reason = " — ".join(reason_parts) if reason_parts else "Key plot episode"
-                items.append(
-                    RecommendationItem(
-                        season=season["number"],
-                        episode=ep["number"],
-                        title=ep.get("title"),
-                        reason=reason,
-                    )
-                )
+def _build_query_text(
+    targetSeason: int,
+    global_arcs: Sequence[str] | None,
+    showId: str | None,
+) -> str:
+    parts: List[str] = []
+    if showId:
+        parts.append(f"show: {showId}")
+    parts.append(f"target season: {targetSeason}")
+    if global_arcs:
+        parts.append("key arcs: " + ", ".join(global_arcs))
+    return "\n".join(parts)
 
-    # покрытие core_arcs
-    core_arcs = set(show.get("core_arcs", []))
-    covered = set()
-    for it in items:
-        for ep in next(s for s in show["seasons"] if s["number"] == it.season)["episodes"]:
-            if ep["number"] == it.episode:
-                covered.update(ep.get("arcs", []))
 
-    missing = list(core_arcs - covered)
-    if missing:
-        for arc in missing:
-            candidate = None
-            for season in show["seasons"]:
-                if season["number"] >= req.targetSeason:
-                    break
-                for ep in sorted(season["episodes"], key=lambda e: -e.get("importance", 3)):
-                    if arc in ep.get("arcs", []):
-                        candidate = (season["number"], ep)
-                        break
-                if candidate:
-                    break
-            if candidate:
-                snum, ep = candidate
-                if not any((it.season == snum and it.episode == ep["number"]) for it in items):
-                    items.append(
-                        RecommendationItem(
-                            season=snum,
-                            episode=ep["number"],
-                            title=ep.get("title"),
-                            reason=f"core arc: {arc}",
-                        )
-                    )
+def recommend_minimal(
+    episodes: List[Episode],
+    targetSeason: int,
+    immersion: int = 3,
+    required_arcs_by_season: Optional[Dict[int, Set[str]]] = None,
+    showId: Optional[str] = None,
+    embedder: Optional[EmbeddingsProvider] = None,
+) -> Dict[int, List[Episode]]:
+    """
+    Core entry point:
+    Возвращает {season: [Episode,...]} только для сезонов < targetSeason.
+    """
+    embedder = embedder or FakeEmbeddings()
+    scorer = EpisodeScorer(embedder=embedder, config=ScoringConfig())
+    planner = CoveragePlanner()
 
-    items.sort(key=lambda x: (x.season, x.episode))
-    return RecommendationResponse(
-        showId=req.showId,
-        targetSeason=req.targetSeason,
-        immersion=req.immersion,
-        items=items,
-    )
+    # фильтруем только прошлые сезоны
+    prior_eps: List[Episode] = [ep for ep in (episodes or []) if int(ep.get("season", 0)) < int(targetSeason)]
+    if not prior_eps:
+        return {}
+
+    # объединяем требуемые арки по всем сезонам (для запроса к эмбеддингам)
+    global_arcs: List[str] = []
+    if required_arcs_by_season:
+        uni: Set[str] = set()
+        for arcs in required_arcs_by_season.values():
+            uni |= set(arcs or [])
+        global_arcs = sorted(list(uni))
+
+    query_text = _build_query_text(targetSeason, global_arcs, showId)
+
+    # скорим все эпизоды
+    scored: List[Tuple[Episode, float]] = scorer.score(prior_eps, query_text)
+
+    # группируем по сезону
+    by_season: Dict[int, List[Tuple[Episode, float]]] = defaultdict(list)
+    for ep, score in scored:
+        s = int(ep.get("season", 0))
+        by_season[s].append((ep, score))
+
+    # выбираем минимально достаточный набор по каждому сезону
+    result: Dict[int, List[Episode]] = {}
+    for season, items in by_season.items():
+        items.sort(key=lambda t: t[1], reverse=True)
+        needed = set(required_arcs_by_season.get(season, set())) if required_arcs_by_season else set()
+        chosen = planner.select_for_season(items, needed, immersion)
+        result[season] = chosen
+
+    # сортируем по номеру сезона
+    return dict(sorted(result.items(), key=lambda kv: kv[0]))

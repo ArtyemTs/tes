@@ -1,15 +1,31 @@
 services:
   ml:
-    build: ../ml
+    build:
+      context: ..
+      dockerfile: ml/Dockerfile
     container_name: tes-ml
-    ports: ["8000:8000"]
+    working_dir: /app
     environment:
       - LOG_LEVEL=info
+      - PYTHONPATH=/app
+      - DATA_PATH=/app/ml/data/got.yaml
+    command: uvicorn ml.app:app --host 0.0.0.0 --port 8000 --log-level info --proxy-headers
+    ports:
+      - "8000:8000"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:8000/health'); sys.exit(0)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
   api:
     build: ../api
     container_name: tes-api
-    depends_on: [ml]
+    depends_on:
+      ml:
+        condition: service_healthy
     ports:
       - "8080:8080"
       - "5005:5005"
@@ -17,6 +33,7 @@ services:
       - ML_BASE_URL=http://ml:8000
       - SERVER_PORT=8080
     restart: unless-stopped
+
   web:
     build: ../web
     container_name: tes-web
@@ -25,4 +42,3 @@ services:
     environment:
       - VITE_API_BASE=http://localhost:8080
     restart: unless-stopped
-

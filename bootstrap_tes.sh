@@ -14,7 +14,7 @@ services:
       - LOG_LEVEL=info
     restart: unless-stopped
   api:
-    build: ../api
+    build: ../apiv
     container_name: tes-api
     depends_on: [ml]
     ports: ["8080:8080"]
@@ -156,7 +156,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MlClient {
   private final ObjectMapper mapper = new ObjectMapper();
-  @Value("${ml.baseUrl}") private String baseUrl;
+  @Value("${ml.base-url}") private String baseUrl;
   public RecommendationResponse recommend(RecommendationRequest request) {
     try (CloseableHttpClient client = HttpClients.createDefault()) {
       HttpPost post = new HttpPost(baseUrl + "/recommend");
@@ -305,7 +305,7 @@ from .models import RecommendationRequest, RecommendationResponse
 from .logic import load_dataset, recommend
 import os
 app = FastAPI(title="TES ML Service", version="0.1.0")
-DATA_PATH = os.environ.get("DATA_PATH", "/app/data/got.yaml")
+DATA_PATH = os.environ.get("DATA_PATH", "/app/ml/data/got.yaml")
 DATA = load_dataset(DATA_PATH)
 @app.post("/recommend", response_model=RecommendationResponse)
 def recommend_endpoint(req: RecommendationRequest):

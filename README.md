@@ -1,4 +1,4 @@
-# Through Every Season (TES)
+## Through Every Season (TES)
 
 ## 📖 Overview
 **Through Every Season (TES)** is a service that recommends the **minimal sufficient set of TV show episodes** so viewers can start from any season while preserving context.  
