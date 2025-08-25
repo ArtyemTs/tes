@@ -9,7 +9,7 @@
         <spring.boot.version>3.3.6</spring.boot.version>
         <logback.version>1.5.18</logback.version>        <!-- >=1.5.13 fixes CVE-2024-12798/12801 -->
         <tomcat.version>10.1.44</tomcat.version>         <!-- свежая 10.1.x ветка -->
-        <json-smart.version>2.5.2</json-smart.version>   <!-- fixes CVE-2024-57699 -->
+        <json-smart.version>2.6.0</json-smart.version>   <!-- fixes CVE-2024-57699 -->
         <xmlunit.version>2.10.0</xmlunit.version>        <!-- fixes CVE-2024-31573 -->
         <commons-lang3.version>3.18.0</commons-lang3.version> <!-- fixes CVE-2025-48924 -->
     </properties>
