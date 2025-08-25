@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Set, Any
 from .models import RecommendationRequest, RecommendationResponse
 
-import os
 import yaml
 
 from ml.logic import recommend_minimal

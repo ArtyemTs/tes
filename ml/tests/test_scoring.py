@@ -1,4 +1,3 @@
-import numpy as np
 from ml.scoring import EpisodeScorer
 from ml.embeddings import FakeEmbeddings
 

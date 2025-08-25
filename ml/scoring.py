@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
-import numpy as np
-
 from .embeddings import EmbeddingsProvider, FakeEmbeddings, cosine_matrix
 
 
