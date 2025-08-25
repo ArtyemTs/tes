@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Protocol, Sequence
+from typing import Iterable, List, Protocol, Sequence
 import hashlib
 import math
+import numpy as np
+
 
 class EmbeddingsProvider(Protocol):
     """Interface for embedding backends."""

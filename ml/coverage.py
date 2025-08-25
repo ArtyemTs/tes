@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 
 Episode = Mapping[str, object]
