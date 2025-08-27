@@ -1,9 +1,13 @@
 server:
   port: 8080
 
+springdoc:
+  swagger-ui:
+    enabled: true   # В dev включаем UI
+
 tes:
   ml:
-    base-url: http://ml:8000        # compose dev
+    base-url: http://ml:8000   # docker-compose dev использует 5000
 
 management:
   endpoints:
@@ -15,7 +19,7 @@ management:
       probes:
         enabled: true
   server:
-    port: 8081                      # отдельный порт актуаторов (удобно в dev)
+    port: 8081                 # отдельный порт актуаторов (удобно в dev)
 
 logging:
   level:

@@ -1,9 +1,15 @@
 server:
   port: ${API_PORT:8080}
 
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: false
+
 tes:
   ml:
-    bas-url: ${ML_BASE_URL:http://ml:8000}
+    base-url: ${ML_BASE_URL:http://ml:5000}   # фикс опечатки: base-url
 
 management:
   endpoints:

@@ -1,8 +1,8 @@
 package com.tes.api.service;
 
 import com.tes.api.dto.RecommendationRequest;
-import com.tes.api.dto.RecommendationResponse;
+import org.springframework.http.ResponseEntity;
 
 public interface RecommendationService {
-  RecommendationResponse recommend(RecommendationRequest req);
+    ResponseEntity<?> recommend(RecommendationRequest request);
 }

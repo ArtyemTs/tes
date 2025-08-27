@@ -1,0 +1,143 @@
+openapi: 3.0.3
+info:
+  title: Through Every Season API
+  version: 0.1.0
+  description: Contract-first spec for recommendations endpoint
+  x-api-revision: 2
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /recommendations:
+    post:
+      summary: Get minimal sufficient episodes per season
+      operationId: postRecommendations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendationRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationResponseMap'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/TesProblem'
+        '429':
+          description: Too Many Requests
+          headers:
+            X-RateLimit-Limit:
+              schema: { type: string }
+            X-RateLimit-Remaining:
+              schema: { type: string }
+            X-RateLimit-Reset:
+              schema: { type: string, description: Seconds until reset }
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/TesProblem'
+        '503':
+          description: Service Unavailable
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                format: int32
+                description: Seconds to wait before retry
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/TesProblem'
+        '504':
+          description: Gateway Timeout
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/TesProblem'
+
+components:
+  schemas:
+    Language:
+      type: string
+      enum: [en, ru]
+      default: en
+
+    RecommendationRequest:
+      type: object
+      required: [showId, targetSeason, immersion]
+      properties:
+        showId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        targetSeason:
+          type: integer
+          minimum: 1
+          maximum: 99
+        immersion:
+          type: integer
+          minimum: 1
+          maximum: 5
+        language:
+          $ref: '#/components/schemas/Language'
+
+    MinimalEpisode:
+      type: object
+      required: [id, season, episode, title, arcs]
+      properties:
+        id:
+          type: string
+        season:
+          type: integer
+          minimum: 1
+        episode:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+        arcs:
+          type: array
+          items:
+            type: string
+
+    RecommendationResponseMap:
+      type: object
+      required: [recommendations]
+      properties:
+        recommendations:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/MinimalEpisode'
+
+    TesProblem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://tes.dev/errors/invalid-request
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        code:
+          type: string
+          example: TES-001
+      additionalProperties: true

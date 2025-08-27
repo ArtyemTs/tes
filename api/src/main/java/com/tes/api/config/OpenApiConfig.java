@@ -1,20 +1,15 @@
 package com.tes.api.config;
 
-import io.swagger.v3.oas.annotations.OpenAPIDefinition;
-import io.swagger.v3.oas.annotations.info.Info;
-import io.swagger.v3.oas.annotations.info.Contact;
-import io.swagger.v3.oas.annotations.servers.Server;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-@OpenAPIDefinition(
-        info = @Info(
-                title = "Through Every Season API",
-                version = "0.1.0",
-                description = "REST API that returns a minimal sufficient set of episodes per season with reasons.",
-                contact = @Contact(name = "TES", url = "https://github.com/ArtyemTs/tes")
-        ),
-        servers = {@Server(url = "/")}
-)
-public class OpenApiConfig {
+public class OpenApiConfig implements WebMvcConfigurer {
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // Serve the OpenAPI yaml statically from classpath:/openapi/
+        registry.addResourceHandler("/openapi/**")
+                .addResourceLocations("classpath:/openapi/");
+    }
 }

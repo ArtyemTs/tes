@@ -47,6 +47,30 @@ docker compose -f infra/docker-compose.yml up --build
 	•	ML:  http://localhost:8000
 	•	Web: http://localhost:5173 (if applicable)
 
+## Contract first
+
+The API contract is maintained in **api/src/main/resources/openapi/tes-openapi.yaml**.
+
+How to view locally:
+
+1. Start API: `docker compose up --build`
+2. Open Swagger UI: <http://localhost:8080/swagger-ui/index.html>
+
+Update flow:
+1. Modify the YAML (bump `info.version`).
+2. Align DTOs/validation to match the spec.
+3. Run contract tests:
+   ```bash
+   cd api && ./mvnw -q -DskipTests=false test
+   ```
+4. Commit changes with message: `feat(api): contract vX.Y.Z`.
+
+Error format is RFC7807 ProblemJSON with TES error codes (see PR#2).
+
+Limits:
+- Request body ≤ 16KB
+- Timeouts: API→ML 3s
+
 CORS in dev allows http://localhost:5173 and http://localhost:3000 by default.
 
 ⸻

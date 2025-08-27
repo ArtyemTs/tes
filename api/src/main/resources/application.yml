@@ -1,27 +1,59 @@
-
-#ml:
-#  base-url: ${ML_BASE_URL:http://localhost:8000}
-#management:
-#  endpoints:
-#    web:
-#      exposure:
-#        include: "health,info,metrics"
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-    display-request-duration: true
-    tags-sorter: alpha
-    operations-sorter: alpha
-#cors:
-#  allowed-origins: "http://localhost:5173"
-#  allowed-methods: "GET,POST,OPTIONS"
-#  allowed-headers: "*"
+server:
+  port: 8080
+  shutdown: graceful
 
 spring:
-  application:
-    name: tes-api
-  profiles:
-    active: dev
+  mvc:
+    problemdetails:
+      enabled: false
+  messages:
+    basename: messages/messages
+    fallback-to-system-locale: false
 
+# По умолчанию только генерация API docs, UI отключён (включаем в dev)
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    root: INFO
+
+# Значения CORS по умолчанию, чтобы плейсхолдеры резолвились в тестах (без активного профиля)
+cors:
+  allowed-origins: "http://localhost:5173,http://localhost:3000"
+  allowed-methods: "GET,POST,OPTIONS"
+  allowed-headers: "*"
+
+tes:
+  ml:
+    strict: false  # dev/test: 200 с деградированным результатом при ошибках ML
+    base-url: http://ml:5000
+    timeouts:
+      connect: 1s
+      read: 3s
+      write: 3s
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      ml:
+        failure-rate-threshold: 50
+        sliding-window-size: 20
+        wait-duration-in-open-state: 10s
+  timelimiter:
+    instances:
+      ml:
+        timeout-duration: 3s
+  bulkhead:
+    instances:
+      ml:
+        max-concurrent-calls: 16
+        max-wait-duration: 50ms
+
+ratelimit:
+  per-ip:
+    capacity: 60
+    refill-period: PT1H

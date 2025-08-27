@@ -1,26 +1,20 @@
 package com.tes.api.dto;
 
-import jakarta.validation.constraints.*;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
 public record RecommendationRequest(
         @NotBlank String showId,
         @Min(1) int targetSeason,
         @Min(1) @Max(5) int immersion,
-        // season -> set of arcs
-        Map<Integer, Set<String>> requiredArcsBySeason,
-        // optional preloaded episodes (for offline/demo)
-        List<EpisodeDto> episodes
+        @Pattern(regexp = "en|ru") String language
 ) {
-  public record EpisodeDto(
-          @NotBlank String id,
-          @Min(1) int season,
-          @Min(1) int episode,
-          @NotBlank String title,
-          @NotBlank String summary,
-          List<String> arcs
-  ) {}
+    // language по умолчанию — "en"
+    public RecommendationRequest {
+        if (language == null || language.isBlank()) {
+            language = "en";
+        }
+    }
 }
