@@ -1,176 +1,103 @@
-
-
 # Through Every Season (TES)
 
-Minimal episode recommendations per season so you can jump into any season of a TV show with just enough context.
-
-- **Input:** show, target season, immersion level (1–5).
-- **Output:** minimal per-season episode list + short reasons ("introduces X", "resolves Y").
-- **Stack:** Java 21 (API), Python (ML), Web UI with RU/EN i18n. Everything runs in Docker.
-
-> Discussions in Russian; code, identifiers, and technical docs in English.
+Service that recommends a minimal sufficient set of episodes per season so a user can start from any season and still understand the context.
 
 ---
 
-## Project layout
+## Quick start
 
-infra/
-api/
-ml/
-web/
-docs/
-adr/
-project_structure.txt
+```bash
+git clone https://github.com/ArtyemTs/tes.git
+cd tes
+docker compose up --build
+```
 
-See `project_structure.txt` for the up-to-date tree.
-
----
-
-## Prerequisites
-
-- Docker + Docker Compose
-- Make (optional)
-- macOS/arm64 friendly (tested on Apple Silicon)
+Open:
+- API: <http://localhost:8080>
+- Swagger UI: <http://localhost:8080/swagger-ui/index.html>
+- Web UI: <http://localhost:5173>
 
 ---
-
-## Quick start (Dev)
-
-Local development uses the **`dev`** profile by default.
-
-
-## From repo root
-docker compose -f infra/docker-compose.yml up --build
-
-	•	API: http://localhost:8080
-	•	(If enabled) Actuator: http://localhost:8081
-	•	ML:  http://localhost:8000
-	•	Web: http://localhost:5173 (if applicable)
 
 ## Contract first
 
 The API contract is maintained in **api/src/main/resources/openapi/tes-openapi.yaml**.
-
-How to view locally:
-
-1. Start API: `docker compose up --build`
-2. Open Swagger UI: <http://localhost:8080/swagger-ui/index.html>
 
 Update flow:
 1. Modify the YAML (bump `info.version`).
 2. Align DTOs/validation to match the spec.
 3. Run contract tests:
    ```bash
-   cd api && ./mvnw -q -DskipTests=false test
+   cd api && ./mvnw test
    ```
-4. Commit changes with message: `feat(api): contract vX.Y.Z`.
-
-Error format is RFC7807 ProblemJSON with TES error codes (see PR#2).
+4. Commit with message: `feat(api): contract vX.Y.Z`.
 
 Limits:
 - Request body ≤ 16KB
-- Timeouts: API→ML 3s
+- API→ML timeout: 3s
 
-CORS in dev allows http://localhost:5173 and http://localhost:3000 by default.
+---
 
-⸻
+## Error handling
 
-Production-like run
+- Errors follow [RFC7807](https://datatracker.ietf.org/doc/html/rfc7807) Problem+JSON.
+- Every error has a `code` (`TES-xxx`) and `correlationId`.
+- Localized messages (`en`, `ru`).
+- Example:
+```json
+{
+  "type": "https://tes.dev/errors/invalid-request",
+  "title": "Invalid request",
+  "status": 400,
+  "code": "TES-001",
+  "correlationId": "123e4567-e89b-12d3-a456-426614174000"
+}
+```
 
-Use the prod profile without changing code. Provide a strict CORS origin.
+---
 
-SPRING_PROFILES_ACTIVE=prod \
-ALLOWED_ORIGINS=https://tes.example.com \
-docker compose -f infra/docker-compose.yml --profile prod up --build
+## ML Resilience
 
-Ports
-	•	API_PORT (default 8080)
-	•	ML_PORT  (default 8000)
+- API→ML calls wrapped in Resilience4j (timeouts, circuit breaker, bulkhead).
+- If ML is down: API returns `503 Service Unavailable` + `Retry-After: 10`.
+- Smoke test:
+  ```bash
+  k6 run infra/perf/smoke-10rps-1m.js
+  ```
 
-⸻
+---
 
-Configuration
+## Rate limiting
 
-All configuration is environment-driven. Key variables:
+- Configurable per-IP rate limit (default: 60 req/hour).
+- On exceeding: `429 Too Many Requests` + headers:
+  - `X-RateLimit-Limit`
+  - `X-RateLimit-Remaining`
+  - `X-RateLimit-Reset`
 
-Service	Variable	Default	Description
-API	SPRING_PROFILES_ACTIVE	dev	Spring profile: dev or prod
-API	API_PORT	8080	API HTTP port
-API	ALLOWED_ORIGINS	http://localhost:5173,http://localhost:3000	CORS allowlist (comma-separated)
-API	ML_BASE_URL	http://ml:8000	ML base URL
-ML	ML_PORT	8000	ML HTTP port
-ML	ALLOWED_ORIGINS	* (dev)	CORS allowlist (set a single origin in prod)
-ML	ML_VERSION	0.1.0	Exposed ML version string
+---
 
-Create .env (optional) to centralize local values:
+## Development
 
-# .env (example)
-SPRING_PROFILES_ACTIVE=dev
-API_PORT=8080
-ML_PORT=8000
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
-ML_BASE_URL=http://ml:8000
-ML_VERSION=0.1.0
+- Java 21 (Spring Boot API).
+- Python 3.11 (ML microservice).
+- Node.js 20 (Web UI).
+- Dockerized, `docker-compose.yml` ties components together.
 
-Docker Compose picks up .env automatically.
+---
 
-⸻
+## Testing
 
-Services
+- API: JUnit5 + MockMvc contract & error tests.
+- ML: pytest.
+- Smoke: k6 scripts under `infra/perf`.
 
-API (Java 21 / Spring Boot)
-	•	Profiles: dev (default), prod
-	•	Config split across application-dev.yml, application-prod.yml
-	•	Env overrides: API_PORT, ALLOWED_ORIGINS, ML_BASE_URL
+---
 
-ML (Python)
-	•	Env-driven: ML_PORT, ALLOWED_ORIGINS, ML_VERSION
-	•	CORS allowlist respects ALLOWED_ORIGINS
+## Security
 
-⸻
+- No hardcoded secrets.
+- Use `.env` for overrides.
+- Dependencies checked via `mvn dependency:analyze` / `pip-audit`.
 
-Run book
-
-Start (dev)
-
-docker compose -f infra/docker-compose.yml up --build
-
-Start (prod-like)
-
-SPRING_PROFILES_ACTIVE=prod ALLOWED_ORIGINS=https://tes.example.com \
-docker compose -f infra/docker-compose.yml --profile prod up --build
-
-Rebuild only API
-
-docker compose -f infra/docker-compose.yml build api && docker compose -f infra/docker-compose.yml up api
-
-Rebuild only ML
-
-docker compose -f infra/docker-compose.yml build ml && docker compose -f infra/docker-compose.yml up ml
-
-
-⸻
-
-Development conventions
-	•	Conventional Commits
-	•	Short PRs, clear DoD
-	•	Docs live in docs/ and ADRs in docs/adr/
-
-⸻
-
-Security & legal
-	•	No unlicensed data.
-	•	Secrets/config only via env variables or secret stores.
-	•	Restrictive CORS in production (ALLOWED_ORIGINS must be set to a single trusted origin).
-
-⸻
-
-Next steps
-
-Phase 0 (today):
-	1.	Profiles & config ✅ (this PR)
-	2.	Health/Readiness endpoints
-	3.	JSON logs + request correlation
-
-![CI](https://github.com/ArtyemTs/tes/actions/workflows/ci.yml/badge.svg)
-![CodeQL](https://github.com/ArtyemTs/tes/actions/workflows/codeql.yml/badge.svg)
+---
