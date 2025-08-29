@@ -1,27 +1,54 @@
 package com.tes.api.client;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tes.api.dto.RecommendationRequest;
-import com.tes.api.dto.RecommendationResponse;
-import lombok.RequiredArgsConstructor;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.io.entity.StringEntity;
+
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.tcp.TcpClient;
+
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
 @Component
-@RequiredArgsConstructor
 public class MlClient {
-  private final ObjectMapper mapper = new ObjectMapper();
-  @Value("${ml.base-url}") private String baseUrl;
-  public RecommendationResponse recommend(RecommendationRequest request) {
-    try (CloseableHttpClient client = HttpClients.createDefault()) {
-      HttpPost post = new HttpPost(baseUrl + "/recommend");
-      post.setEntity(new StringEntity(mapper.writeValueAsString(request), ContentType.APPLICATION_JSON));
-      return client.execute(post, resp -> mapper.readValue(resp.getEntity().getContent(), RecommendationResponse.class));
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to call ML service: " + e.getMessage(), e);
+    private final WebClient wc;
+
+    public MlClient(@Value("${tes.ml.base-url:http://ml:5000}") String baseUrl,
+                    @Value("${tes.ml.timeouts.connect:1s}") Duration connectTimeout,
+                    @Value("${tes.ml.timeouts.read:3s}") Duration readTimeout) {
+        TcpClient tcp = TcpClient.create()
+                .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) connectTimeout.toMillis())
+                .doOnConnected(conn -> conn
+                        .addHandlerLast(new io.netty.handler.timeout.ReadTimeoutHandler(readTimeout.toMillis(), TimeUnit.MILLISECONDS))
+                        .addHandlerLast(new io.netty.handler.timeout.WriteTimeoutHandler(readTimeout.toMillis(), TimeUnit.MILLISECONDS)));
+        this.wc = WebClient.builder()
+                .baseUrl(baseUrl)
+                .clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(HttpClient.from(tcp)))
+                .exchangeStrategies(ExchangeStrategies.builder()
+                        .codecs(cfg -> cfg.defaultCodecs().maxInMemorySize(256 * 1024))
+                        .build())
+                .build();
     }
-  }
+
+    @CircuitBreaker(name = "ml")
+    @TimeLimiter(name = "ml")
+    @Bulkhead(name = "ml")
+    public CompletableFuture<Map> recommendAsync(Map<String, Object> payload) {
+        return wc.post()
+                .uri("/recommend")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .bodyValue(payload)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .timeout(Duration.ofSeconds(3))
+                .toFuture();
+    }
 }
